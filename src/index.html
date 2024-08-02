@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- <link rel="stylesheet" href="./output.css" /> -->
     <title>SQL insert generator</title>
   </head>
   <body>
@@ -22,5 +23,92 @@
 
       <button type="submit">Submit</button>
     </form>
+
+    <script type="module">
+      import { faker } from "https://esm.sh/@faker-js/faker";
+
+      document
+        .querySelector("form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          const tableName = document.getElementById("table-name").value;
+          const rowsNumber = document.getElementById("rows-number").value;
+          const columnTypesInputValue =
+            document.getElementById("column-types").value;
+
+          if (!tableName || !rowsNumber || !columnTypesInputValue) return;
+
+          const columnTypes = columnTypesInputValue.split(/,\s*(?![^()]*\))/);
+
+          const fieldValuesFunctions = [];
+
+          columnTypes.forEach((columnType) => {
+            switch (true) {
+              case columnType.includes("VARCHAR"): {
+                const func = faker.string.alpha;
+                const arg = {
+                  casing: "lower",
+                  length: {
+                    min: 0,
+                    max: Number(columnType.slice(8, columnType.length - 1)),
+                  },
+                };
+                fieldValuesFunctions.push([func, arg]);
+                break;
+              }
+
+              case columnType.includes("CHAR"): {
+                const func = faker.string.alpha;
+                const arg = {
+                  casing: "lower",
+                  length: {
+                    min: 0,
+                    max: Number(columnType.slice(5, columnType.length - 1)),
+                  },
+                };
+                fieldValuesFunctions.push([func, arg]);
+                break;
+              }
+
+              case columnType.includes("TEXT"): {
+                const func = faker.string.alpha;
+                const arg = {
+                  casing: "lower",
+                  length: {
+                    min: 0,
+                    max: 65535,
+                  },
+                };
+                fieldValuesFunctions.push([func, arg]);
+                break;
+              }
+
+              case columnType.includes("ENUM"): {
+                const func = faker.helpers.arrayElement;
+                const arg = columnType
+                  .slice(5, columnType.length - 1)
+                  .split(",");
+                console.log(columnType.slice(5, columnType.length - 1));
+                fieldValuesFunctions.push([func, arg]);
+                break;
+              }
+            }
+          });
+
+          let query = `INSERT INTO ${tableName} VALUES `;
+          for (let i = 0; i < rowsNumber; i++) {
+            query = query + `(`;
+            fieldValuesFunctions.forEach(([func, arg]) => {
+              query = query + `${func(arg)},`;
+            });
+            query = query.slice(0, -1);
+            query = query + `),`;
+          }
+          query = query.slice(0, -1) + ";";
+
+          console.log(query);
+        });
+    </script>
   </body>
 </html>
