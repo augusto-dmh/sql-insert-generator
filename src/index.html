@@ -6,6 +6,7 @@
     <!-- <link rel="stylesheet" href="./output.css" /> -->
     <title>SQL insert generator</title>
   </head>
+
   <body>
     <form action="">
       <div>
@@ -46,51 +47,57 @@
           columnTypes.forEach((columnType) => {
             switch (true) {
               case columnType.includes("VARCHAR"): {
-                const func = faker.string.alpha;
-                const arg = {
-                  casing: "lower",
-                  length: {
-                    min: 0,
-                    max: Number(columnType.slice(8, columnType.length - 1)),
-                  },
+                const func = () => {
+                  const max = Number(
+                    columnType.slice(8, columnType.length - 1)
+                  );
+                  const result = faker.lorem.words({ min: 1, max: 6500 }); // considering each word having in media 10 characters, the limit is not yet violated even considering max number chosen
+
+                  return result.length > max || result.length > 65535
+                    ? result.substring(0, max - 1)
+                    : result; // but if the number shows as greater, the string is sliced to fit the max size allowed
                 };
-                fieldValuesFunctions.push([func, arg]);
+                fieldValuesFunctions.push(func);
                 break;
               }
 
               case columnType.includes("CHAR"): {
-                const func = faker.string.alpha;
-                const arg = {
-                  casing: "lower",
-                  length: {
-                    min: 0,
-                    max: Number(columnType.slice(5, columnType.length - 1)),
-                  },
+                const func = () => {
+                  const max = Number(
+                    columnType.slice(5, columnType.length - 1)
+                  );
+                  const result = faker.lorem.words({ min: 1, max: 20 });
+
+                  return result.length > max || result.length > 255
+                    ? result.substring(0, max - 1)
+                    : result;
                 };
-                fieldValuesFunctions.push([func, arg]);
+                fieldValuesFunctions.push(func);
                 break;
               }
 
               case columnType.includes("TEXT"): {
-                const func = faker.string.alpha;
-                const arg = {
-                  casing: "lower",
-                  length: {
-                    min: 0,
-                    max: 65535,
-                  },
+                const func = () => {
+                  const max = 65535;
+                  const result = faker.lorem.paragraphs({ min: 1, max: 500 });
+
+                  return result.length > max
+                    ? result.substring(0, max - 1)
+                    : result;
                 };
-                fieldValuesFunctions.push([func, arg]);
+                fieldValuesFunctions.push(func);
                 break;
               }
 
               case columnType.includes("ENUM"): {
-                const func = faker.helpers.arrayElement;
-                const arg = columnType
-                  .slice(5, columnType.length - 1)
-                  .split(",");
-                console.log(columnType.slice(5, columnType.length - 1));
-                fieldValuesFunctions.push([func, arg]);
+                const func = () => {
+                  const enumOptions = columnType
+                    .slice(5, columnType.length - 1)
+                    .split(",");
+
+                  return faker.helpers.arrayElement(enumOptions);
+                };
+                fieldValuesFunctions.push(func);
                 break;
               }
             }
@@ -99,8 +106,8 @@
           let query = `INSERT INTO ${tableName} VALUES `;
           for (let i = 0; i < rowsNumber; i++) {
             query = query + `(`;
-            fieldValuesFunctions.forEach(([func, arg]) => {
-              query = query + `${func(arg)},`;
+            fieldValuesFunctions.forEach((func) => {
+              query = query + `${func()},`;
             });
             query = query.slice(0, -1);
             query = query + `),`;
